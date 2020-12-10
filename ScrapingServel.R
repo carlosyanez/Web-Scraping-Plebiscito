@@ -20,7 +20,7 @@ remDr <- rsDriver(
 rd <- remDr$client
 
 # Ir a la web del SERVEL
-url <- 'http://www.servelelecciones.cl/'
+url <- 'http://pv.servelelecciones.cl/'     #Resultados plebiscito (página principal contiene ahora primarias)
 #rd$open()
 rd$navigate(url)
 
@@ -102,7 +102,7 @@ rd$findElement(using = "css",
 )$clickElement()
 
 datos_comuna <- tibble() # data frame que almacenará resultados
-for (i in seq_along(reg_com$inicial)){
+for (i in 214:nrow(reg_com)){
   
   # inicial de la comuna
   c <- reg_com$inicial[i]
@@ -160,7 +160,7 @@ for (i in seq_along(reg_com$inicial)){
 }
 
 # Ajustar y exportar data frame
-datos_comuna %>% 
+datos_comuna <- datos_comuna %>% 
   rename("Region" = 1,
          "Comuna" = 2,
          "Apruebo" = 3,
@@ -179,8 +179,40 @@ datos_comuna %>%
          Blanco_per = (Blanco/Total)*100) %>% 
   select(Region, Comuna, Total, Validos, Apruebo, Rechazo, Nulo, Blanco, 
          Validos_per, Apruebo_per, Rechazo_per, Nulo_per, Blanco_per) %>% 
-  dplyr::arrange(Region, Comuna) %>% 
-  write_excel_csv("datos/DatosPlebiscito.csv")
+  dplyr::arrange(Region, Comuna) 
+
+
+# mapa vectorial de comunas de Chile : Fuente a la Biblioteca del Congreso Nacional de Chile. 
+
+download.file("https://www.bcn.cl/obtienearchivo?id=repositorio/10221/10396/2/Comunas.zip","comunas/comunas.zip")
+unzip("comunas/comunas.zip",exdir = "comunas/")
+
+#obtener datos de comunas de df vectorial (util para referencia futura)
+
+library(sf)
+library(stringi)
+comunas_geo <- st_read("comunas/comunas.shp")
+st_geometry(comunas_geo) <- NULL
+comunas_data <- comunas_geo %>% select(Comuna, Region, Provincia,cod_comuna,codregion) %>%
+                                mutate(Comuna_Match=stri_trans_general(str = tolower(Comuna), id = "Latin-ASCII")) 
+
+datos_comuna_export <-datos_comuna %>% mutate(Comuna_Match=stri_trans_general(str = tolower(Comuna), id = "Latin-ASCII"),
+                           Comuna_Servel=Comuna) %>% 
+                          select(-Comuna,-Region) %>%
+                          mutate(Comuna_Match=str_replace_all(Comuna_Match,"trehuaco","treguaco"),                            #special cases
+                                 Comuna_Match=str_replace_all(Comuna_Match,"ohiggins","o'higgins"),
+                                 Comuna_Match=str_replace_all(Comuna_Match,"\\(ex-navarino\\)","")) %>%                                      
+                          left_join(comunas_data,by="Comuna_Match") %>%
+                          mutate(Region=str_replace_all(Region,"Región del ",""),
+                                 Region=str_replace_all(Region,"Región de ",""),
+                                 Region=str_replace_all(Region,"Región Metropolitana de Santiago","Metropolitana")) %>%
+                          select(codregion,cod_comuna,Region,Comuna,Total,Validos,Apruebo,Rechazo,Nulo,Blanco,
+                                 Validos_per,Apruebo_per,Rechazo_per,Nulo_per,Blanco_per,Comuna_Servel) %>%
+                          arrange(desc(cod_comuna))
+  
+# Comuna_Servel - se mantiene para comparación con resultados históricos SERVEL 
+
+datos_comuna_export%>% write_excel_csv("datos/DatosPlebiscito.csv")
 
 rd$closeServer();rd$close();remDr$server$stop()
 
