@@ -1,7 +1,7 @@
 Forked from [pjaguirreh/Web-Scraping-Plebiscito](https://github.com/pjaguirreh/Web-Scraping-Plebiscito) and made small changes:
 
 - Changed scrpaing URL to reflect changes made by SERVEL
-- Change LGA (Comunas) names to match those in vector file from National Congress Library (https://www.bcn.cl/siit/mapas_vectoriales/index_html)
+- Changed LGA (Comunas) names to match those in vector file from National Congress Library (https://www.bcn.cl/siit/mapas_vectoriales/index_html)
 
 ---------------
 
