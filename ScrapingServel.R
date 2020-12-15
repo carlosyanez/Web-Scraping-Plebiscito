@@ -4,8 +4,9 @@
 
 library(RSelenium)
 library(rvest)
-library(openxlsx)
 library(tidyverse)
+library(sf)
+library(stringi)
 
 #######################
 # CONECTAR A SELENIUM #
@@ -102,18 +103,22 @@ rd$findElement(using = "css",
 )$clickElement()
 
 datos_comuna <- tibble() # data frame que almacenará resultados
-for (i in 214:nrow(reg_com)){
+for (i in 1:nrow(reg_com)){
   
   # inicial de la comuna
-  c <- reg_com$inicial[i]
+  c <- reg_com[i,]$inicial
+  
+  Sys.sleep(2)
   
   # insertar inicial en menú desplegable de web
   webElemComuna <- rd$findElement(using = "css", 
                                   value = "#selComunas")
   webElemComuna$sendKeysToElement(list(c))
   
+  Sys.sleep(0.5)
+  
   # Votos apruebo
-  webElemApruebo <- rd$findElement(using = "css", value = "#basic-table > table > tbody:nth-child(2) > tr:nth-child(2) > td:nth-child(3) > small > span")
+  webElemApruebo <- rd$findElement(using = "css", value = "tr.nivelUno:nth-child(2) > td:nth-child(3) > small:nth-child(1) > span:nth-child(1)")
   apruebo <- webElemApruebo$getElementText()[[1]] %>% 
     str_remove("\\.") %>% 
     as.numeric()
@@ -143,8 +148,8 @@ for (i in 214:nrow(reg_com)){
     as.numeric()   
   
   # Ingresar valores en data frame
-  datos_comuna[i,1] <- reg_com$reg[i]
-  datos_comuna[i,2] <- reg_com$nombre[i]
+  datos_comuna[i,1] <- reg_com[i,]$reg
+  datos_comuna[i,2] <- reg_com[i,]$nombre
   datos_comuna[i,3] <- apruebo
   datos_comuna[i,4] <- rechazo
   datos_comuna[i,5] <- nulo
@@ -182,15 +187,96 @@ datos_comuna <- datos_comuna %>%
   dplyr::arrange(Region, Comuna) 
 
 
-# mapa vectorial de comunas de Chile : Fuente a la Biblioteca del Congreso Nacional de Chile. 
+
+
+
+## ---------------------------------
+## GENERAR DATA FRAME PARTICIPACION
+## ---------------------------------
+
+rd$navigate(url)
+
+# Ir a la pag específica de la extracción
+rd$findElement(using = "css", 
+               value = "li.hidden-xs:nth-child(3)"
+)$clickElement()
+
+rd$findElement(using = "css", 
+               value = ".menu_division > li:nth-child(3) > a:nth-child(1)"
+)$clickElement()
+
+
+datos_participacion <- tibble() # data frame que almacenará resultados
+for (i in 1:nrow(reg_com)){
+  
+  # inicial de la comuna
+  c <- reg_com[i,]$inicial
+  
+  Sys.sleep(2)
+  
+  # insertar inicial en menú desplegable de web
+  webElemComuna <- rd$findElement(using = "css", 
+                                  value = "#selComunas")
+  webElemComuna$sendKeysToElement(list(c))
+  
+  Sys.sleep(1)
+  
+  # Votos Electores
+  webElemElectores <- rd$findElement(using = "css", value = ".table > tfoot:nth-child(4) > tr:nth-child(1) > th:nth-child(3) > strong:nth-child(1)")
+  electores <- webElemElectores$getElementText()[[1]] %>% 
+    str_remove("\\.") %>% 
+    as.numeric()
+  
+  Sys.sleep(0.5)
+  
+  # Votos Participacion
+  webElemParticipacion<- rd$findElement(using = "css", value = ".table > tfoot:nth-child(4) > tr:nth-child(1) > th:nth-child(4) > strong:nth-child(1)")
+  participacion <- webElemParticipacion$getElementText()[[1]] %>% 
+    str_remove("\\.") %>% 
+    as.numeric()
+  
+  Sys.sleep(0.5)
+  
+ 
+  
+  # Ingresar valores en data frame
+  datos_participacion[i,1] <- reg_com[i,]$nombre
+  datos_participacion[i,2] <- electores
+  datos_participacion[i,3] <- participacion
+  
+  
+  # Reportar en cada iteración resultados
+  datos_participacion %>% 
+    slice(i) %>% print()
+  
+  cbind(nrow(dplyr::distinct(dplyr::select(datos_participacion, `...1`))), nrow(datos_participacion)) %>% print()
+  
+  Sys.sleep(0.5)
+}
+
+# Ajustar y exportar data frame
+datos_participacion <- datos_participacion %>% 
+  rename("Comuna" = 1,
+         "Electores" = 2,
+         "Participacion" = 3
+  ) %>%
+  mutate(Participacion_per = Participacion/Electores) %>% 
+  dplyr::arrange(Comuna) 
+
+datos_comuna <- datos_comuna %>% left_join(datos_participacion,by="Comuna")
+
+
+## ---------------------------------
+## mapa vectorial de comunas de Chile : Fuente a la Biblioteca del Congreso Nacional de Chile. 
+## ---------------------------------
+
+
 
 download.file("https://www.bcn.cl/obtienearchivo?id=repositorio/10221/10396/2/Comunas.zip","comunas/comunas.zip")
 unzip("comunas/comunas.zip",exdir = "comunas/")
 
 #obtener datos de comunas de df vectorial (util para referencia futura)
 
-library(sf)
-library(stringi)
 comunas_geo <- st_read("comunas/comunas.shp")
 st_geometry(comunas_geo) <- NULL
 comunas_data <- comunas_geo %>% select(Comuna, Region, Provincia,cod_comuna,codregion) %>%
@@ -207,7 +293,8 @@ datos_comuna_export <-datos_comuna %>% mutate(Comuna_Match=stri_trans_general(st
                                  Region=str_replace_all(Region,"Región de ",""),
                                  Region=str_replace_all(Region,"Región Metropolitana de Santiago","Metropolitana")) %>%
                           select(codregion,cod_comuna,Region,Comuna,Total,Validos,Apruebo,Rechazo,Nulo,Blanco,
-                                 Validos_per,Apruebo_per,Rechazo_per,Nulo_per,Blanco_per,Comuna_Servel) %>%
+                                 Validos_per,Apruebo_per,Rechazo_per,Nulo_per,Blanco_per,
+                                 Electores,Participacion,Participacion_per,Comuna_Servel) %>%
                           arrange(desc(cod_comuna))
   
 # Comuna_Servel - se mantiene para comparación con resultados históricos SERVEL 
