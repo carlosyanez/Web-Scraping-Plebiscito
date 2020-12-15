@@ -63,14 +63,14 @@ for (r in seq_along(lista_regiones$inicial)){
   # inicial de la region
   ini_reg <- lista_regiones$inicial[r]
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # insertar inicial en menú desplegable de web
   webElemRegion <- rd$findElement(using = "css", 
                                   value = "#selRegion")
   webElemRegion$sendKeysToElement(list(ini_reg))
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # Generar lista de comunas
   webElemComuna <- rd$findElement(using = "css", 
@@ -78,12 +78,12 @@ for (r in seq_along(lista_regiones$inicial)){
   lista_comunas <- webElemComuna$getElementAttribute("outerHTML") %>% 
     limpiar_lista()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   com_r <- lista_comunas %>% 
     mutate(reg = lista_regiones$nombre[r])
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   reg_com <- bind_rows(reg_com, com_r)
 }
@@ -115,7 +115,7 @@ for (i in 1:nrow(reg_com)){
                                   value = "#selComunas")
   webElemComuna$sendKeysToElement(list(c))
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # Votos apruebo
   webElemApruebo <- rd$findElement(using = "css", value = "tr.nivelUno:nth-child(2) > td:nth-child(3) > small:nth-child(1) > span:nth-child(1)")
@@ -123,7 +123,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # Votos rechazo
   webElemRechazo <- rd$findElement(using = "css", value = "#basic-table > table > tbody:nth-child(2) > tr:nth-child(5) > td:nth-child(3) > small > span")
@@ -131,7 +131,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # Votos nulo
   webElemNulo <- rd$findElement(using = "css", value = "#basic-table > table > tfoot > tr:nth-child(2) > th:nth-child(2) > strong")
@@ -139,7 +139,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()  
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # Votos blanco
   webElemBlanco <- rd$findElement(using = "css", value = "#basic-table > table > tfoot > tr:nth-child(3) > th:nth-child(2) > strong")
@@ -161,7 +161,7 @@ for (i in 1:nrow(reg_com)){
   
   cbind(nrow(dplyr::distinct(dplyr::select(datos_comuna, `...1`))), nrow(datos_comuna)) %>% print()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
 }
 
 # Ajustar y exportar data frame
@@ -227,7 +227,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
   # Votos Participacion
   webElemParticipacion<- rd$findElement(using = "css", value = ".table > tfoot:nth-child(4) > tr:nth-child(1) > th:nth-child(4) > strong:nth-child(1)")
@@ -235,7 +235,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
   
  
   
@@ -251,7 +251,7 @@ for (i in 1:nrow(reg_com)){
   
   cbind(nrow(dplyr::distinct(dplyr::select(datos_participacion, `...1`))), nrow(datos_participacion)) %>% print()
   
-  Sys.sleep(0.5)
+  Sys.sleep(2)
 }
 
 # Ajustar y exportar data frame
@@ -295,7 +295,11 @@ datos_comuna_export <-datos_comuna %>% mutate(Comuna_Match=stri_trans_general(st
                           select(codregion,cod_comuna,Region,Comuna,Total,Validos,Apruebo,Rechazo,Nulo,Blanco,
                                  Validos_per,Apruebo_per,Rechazo_per,Nulo_per,Blanco_per,
                                  Electores,Participacion,Participacion_per,Comuna_Servel) %>%
-                          arrange(desc(cod_comuna))
+                          arrange(desc(cod_comuna))  %>%
+                          mutate(Comuna=ifelse(Comuna_Servel=="ANTARTICA","Antartica",Comuna),                             #Antartica (not in geo file - not a LGA)
+                                 Region=ifelse(Comuna_Servel=="ANTARTICA","Magallanes y Antártica Chilena",Region),
+                                 codregion=ifelse(Comuna_Servel=="ANTARTICA",12,codregion),
+                                 cod_comuna=ifelse(Comuna_Servel=="ANTARTICA",0,cod_comuna))
   
 # Comuna_Servel - se mantiene para comparación con resultados históricos SERVEL 
 
