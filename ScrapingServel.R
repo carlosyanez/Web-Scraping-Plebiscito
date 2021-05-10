@@ -115,7 +115,7 @@ for (i in 1:nrow(reg_com)){
                                   value = "#selComunas")
   webElemComuna$sendKeysToElement(list(c))
   
-  Sys.sleep(2)
+  Sys.sleep(5)
   
   # Votos apruebo
   webElemApruebo <- rd$findElement(using = "css", value = "tr.nivelUno:nth-child(2) > td:nth-child(3) > small:nth-child(1) > span:nth-child(1)")
@@ -161,7 +161,7 @@ for (i in 1:nrow(reg_com)){
   
   cbind(nrow(dplyr::distinct(dplyr::select(datos_comuna, `...1`))), nrow(datos_comuna)) %>% print()
   
-  Sys.sleep(2)
+  Sys.sleep(5)
 }
 
 # Ajustar y exportar data frame
@@ -211,15 +211,15 @@ for (i in 1:nrow(reg_com)){
   
   # inicial de la comuna
   c <- reg_com[i,]$inicial
-  
-  Sys.sleep(2)
+  message(i)
+  Sys.sleep(1)
   
   # insertar inicial en menú desplegable de web
   webElemComuna <- rd$findElement(using = "css", 
                                   value = "#selComunas")
   webElemComuna$sendKeysToElement(list(c))
   
-  Sys.sleep(1)
+  Sys.sleep(4)
   
   # Votos Electores
   webElemElectores <- rd$findElement(using = "css", value = ".table > tfoot:nth-child(4) > tr:nth-child(1) > th:nth-child(3) > strong:nth-child(1)")
@@ -227,7 +227,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()
   
-  Sys.sleep(2)
+  #Sys.sleep(1)
   
   # Votos Participacion
   webElemParticipacion<- rd$findElement(using = "css", value = ".table > tfoot:nth-child(4) > tr:nth-child(1) > th:nth-child(4) > strong:nth-child(1)")
@@ -235,7 +235,7 @@ for (i in 1:nrow(reg_com)){
     str_remove("\\.") %>% 
     as.numeric()
   
-  Sys.sleep(2)
+  #Sys.sleep(1)
   
  
   
@@ -251,7 +251,7 @@ for (i in 1:nrow(reg_com)){
   
   cbind(nrow(dplyr::distinct(dplyr::select(datos_participacion, `...1`))), nrow(datos_participacion)) %>% print()
   
-  Sys.sleep(2)
+  #Sys.sleep(1)
 }
 
 # Ajustar y exportar data frame
@@ -263,6 +263,11 @@ datos_participacion <- datos_participacion %>%
   mutate(Participacion_per = Participacion/Electores) %>% 
   dplyr::arrange(Comuna) 
 
+#corregir ñuñoa
+datos_participacion[188,2] <- 195466
+datos_participacion[188,3] <- 125216
+datos_participacion[188,4] <- datos_participacion[188,3]/datos_participacion[188,2]
+#merge
 datos_comuna <- datos_comuna %>% left_join(datos_participacion,by="Comuna")
 
 
